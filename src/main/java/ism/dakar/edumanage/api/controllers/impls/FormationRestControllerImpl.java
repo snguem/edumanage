@@ -6,6 +6,7 @@ import java.util.Map;
 import ism.dakar.edumanage.api.modeles.FormationDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,8 @@ public class FormationRestControllerImpl implements IFormationRestController {
 
     private final FormationService formationService;
 
+
+    @PreAuthorize("hasAnyAuthority('FORMATEUR', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> create(FormationDto dtoRequest) {
         try {
@@ -33,6 +36,7 @@ public class FormationRestControllerImpl implements IFormationRestController {
         }
     }
 
+    @PreAuthorize("hasAnyAuthority('FORMATEUR', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> update(Long id, FormationDto dto) {
         try {
@@ -73,6 +77,7 @@ public class FormationRestControllerImpl implements IFormationRestController {
         return Response.ok().setPayload(formationService.countAll(searchParams));
     }
 
+    @PreAuthorize("hasAnyRole('FORMATEUR', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> delete(Long id) {
         try {

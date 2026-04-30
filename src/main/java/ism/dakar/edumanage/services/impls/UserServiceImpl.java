@@ -3,9 +3,12 @@ package ism.dakar.edumanage.services.impls;
 import com.querydsl.core.BooleanBuilder;
 import ism.dakar.edumanage.api.mappers.UserMapper;
 import ism.dakar.edumanage.api.modeles.UserDto;
+import ism.dakar.edumanage.datas.entities.AuditLogEntity;
+import ism.dakar.edumanage.datas.repositories.AuditLogRepository;
 import ism.dakar.edumanage.datas.repositories.UserRepo;
 import ism.dakar.edumanage.security.api.mappers.AccessMapper;
 import ism.dakar.edumanage.security.api.models.LoginDto;
+import ism.dakar.edumanage.security.datas.enums.StatutEnum;
 import ism.dakar.edumanage.security.datas.repository.AccessRepository;
 import ism.dakar.edumanage.security.exceptions.BadRequestException;
 import ism.dakar.edumanage.security.exceptions.DuplicateReferenceException;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.CharBuffer;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,7 @@ import java.util.stream.StreamSupport;
 @Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepo repository;
+    private final AuditLogRepository auditLogRepository;
     private final AccessRepository accessRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
@@ -42,19 +47,60 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto login(LoginDto loginDto) {
         log.info("Tentative d'authentufication pour "+loginDto.getEmail());
+        auditLogRepository.save(AuditLogEntity.builder()
+                        .actif(true)
+                        .cible("Utilisateur")
+                        .action("Connexion")
+                        .details("L'utilisateur tente de se connecter avec l'identifiant : " + loginDto.getEmail())
+                        .userEmail(loginDto.getEmail())
+                        .userName("-")
+                        .statut(StatutEnum.ACTIF)
+                        .loggedAt(LocalDateTime.now())
+                .build());
         var user_ = repository.findByEmailEquals(loginDto.getEmail());
 
         if (user_ == null  || !user_.getEmail().equals(loginDto.getEmail())) {
             log.error("Authentification echoue car l'utilisateur "+loginDto.getEmail()+" n'existe pas");
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Utilisateur")
+                    .action("Connexion")
+                    .details("Authentification echoué pour l'utilisateur avec le login : "+loginDto.getEmail())
+                    .userEmail(loginDto.getEmail())
+                    .userName("-")
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             throw new NotFoundException("Identifiant et/ou Mot de passe incorrect");
         }
 
         if (passwordEncoder.matches(CharBuffer.wrap(loginDto.getPassword()), user_.getPassword())) {
             var dto = mapper.asDto(user_);
             log.info("Utilisateur "+loginDto.getEmail()+" authentifié");
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Utilisateur")
+                    .action("Connexion")
+                    .details("Authentification reussi")
+                    .userEmail(loginDto.getEmail())
+                    .userName(dto.getNom() + " " + dto.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return dto;
         }
         log.error("Authentification echoué car le mot de passe de l'utilisateur "+loginDto.getEmail()+" est incorrect");
+
+        auditLogRepository.save(AuditLogEntity.builder()
+                .actif(true)
+                .cible("Utilisateur")
+                .action("Connexion")
+                .details("Authentification echoué pour l'utilisateur avec le login : "+loginDto.getEmail())
+                .userEmail(loginDto.getEmail())
+                .userName("-")
+                .statut(StatutEnum.ACTIF)
+                .loggedAt(LocalDateTime.now())
+                .build());
         throw new NotFoundException("Identifiant et/ou Mot de passe incorrect");
     }
 
@@ -81,6 +127,16 @@ public class UserServiceImpl implements UserService {
             entity.setPassword(passwordEncoder.encode(dto.getPassword()));
 
             var entitySaved = repository.save(entity);
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Utilisateur")
+                    .action("Inscription")
+                    .details("Nouvelle inscription pour l'utilisateur : "+dto.getNom() + " \n Role : "+dto.getRoles().stream().collect(Collectors.joining(",")))
+                    .userEmail(dto.getEmail())
+                    .userName(dto.getNom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
         }catch (Exception ex){
             ex.printStackTrace();
@@ -108,6 +164,17 @@ public class UserServiceImpl implements UserService {
             mapper.updateEntityFromDto(dto, entity);
 
             var entitySaved = repository.save(entity);
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Utilisateur")
+                    .action("Mise a jour du profil")
+                    .details("L'utilisateur : "+dto.getNom() + " a effectue une mise a jour sur son profil" + " \n Role : "+dto.getRoles().stream().collect(Collectors.joining(",")))
+                    .userEmail(dto.getEmail())
+                    .userName(dto.getNom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
 
         }catch (Exception ex){
@@ -126,6 +193,16 @@ public class UserServiceImpl implements UserService {
             optional.get().setActif(false);
             optional.get().setEmail(optional.get().getEmail() +" - "+ Instant.now().toString());
             repository.save(optional.get());
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Utilisateur")
+                    .action("Suppression")
+                    .details("Le profil de l'utilisateur "+optional.get().getNom() +" a ete supprime")
+                    .userEmail(optional.get().getEmail())
+                    .userName(optional.get().getNom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
         }catch (Exception ex){
             ex.printStackTrace();
             throw new BadRequestException("Une erreur est survenu lors de la suppression");

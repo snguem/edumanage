@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,8 @@ public class InscriptionRestControllerImpl implements IInscriptionRestController
 
     private final InscriptionService inscriptionService;
 
+
+    @PreAuthorize("hasAnyAuthority('APPRENANT', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> create(InscriptionDto dto) {
         try {
@@ -33,6 +36,8 @@ public class InscriptionRestControllerImpl implements IInscriptionRestController
         }
     }
 
+
+    @PreAuthorize("hasAnyAuthority('APPRENANT', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> update(Long id, InscriptionDto dto) {
         try {
@@ -43,6 +48,7 @@ public class InscriptionRestControllerImpl implements IInscriptionRestController
             return Response.exception().setMessage(ex.getMessage());
         }
     }
+
 
     @Override
     public Response<Object> get(Long id) {

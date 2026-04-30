@@ -6,6 +6,7 @@ import java.util.Map;
 import ism.dakar.edumanage.api.modeles.AuditLogResponseDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +25,7 @@ public class AuditLogRestControllerImpl implements IAuditLogRestController {
     private final AuditLogService logService;
 
     @Override
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     public Response<Object> get(Long id) {
         try {
             return Response.ok().setPayload(logService.get(id));
@@ -32,6 +34,8 @@ public class AuditLogRestControllerImpl implements IAuditLogRestController {
         }
     }
 
+
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     @Override
     public Response<Object> getAll(Map<String, String> searchParams, Pageable pageable) {
         Page<AuditLogResponseDto> page = logService.getAll(searchParams, pageable);
@@ -41,12 +45,16 @@ public class AuditLogRestControllerImpl implements IAuditLogRestController {
                         "currentPage", page.getNumber()));
     }
 
+
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     @Override
     public Response<Object> getAllList(Map<String, String> searchParams) {
         List<AuditLogResponseDto> list = logService.getAll(searchParams);
         return Response.ok().setPayload(list);
     }
 
+
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     @Override
     public Response<Object> countAll(Map<String, String> searchParams) {
         return Response.ok().setPayload(logService.countAll(searchParams));

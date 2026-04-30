@@ -2,22 +2,28 @@ package ism.dakar.edumanage.services.impls;
 
 
 
+import ism.dakar.edumanage.api.modeles.UserDto;
+import ism.dakar.edumanage.datas.entities.*;
+import ism.dakar.edumanage.datas.repositories.AuditLogRepository;
 import ism.dakar.edumanage.datas.repositories.InscriptionRepository;
+import ism.dakar.edumanage.datas.repositories.UserRepo;
+import ism.dakar.edumanage.security.api.models.AppUserDto;
 import ism.dakar.edumanage.security.exceptions.BadRequestException;
 import ism.dakar.edumanage.services.interfaces.InscriptionService;
 import ism.dakar.edumanage.security.exceptions.NotFoundException;
-import ism.dakar.edumanage.datas.entities.QInscriptionEntity;
-import ism.dakar.edumanage.datas.entities.InscriptionEntity;
 import ism.dakar.edumanage.security.datas.enums.StatutEnum;
 import ism.dakar.edumanage.api.mappers.InscriptionMapper;
-import ism.dakar.edumanage.datas.entities.PaiementEntity;
 import ism.dakar.edumanage.api.modeles.InscriptionDto;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +33,8 @@ import java.util.Map;
 public class InscriptionServiceImpl implements InscriptionService {
 
     private final InscriptionRepository repository;
+    private final UserRepo userRepo;
+    private final AuditLogRepository auditLogRepository;
     private final InscriptionMapper mapper;
 
     @Override
@@ -43,11 +51,27 @@ public class InscriptionServiceImpl implements InscriptionService {
             paiement.setModePaiement(dto.getModePaiement());
             paiement.setDatePaiement(LocalDate.now());
             paiement.setStatut(StatutEnum.ACTIF);
+            paiement.setReferenceTransaction("REF-"+ Instant.now().toString().replace(" ", "").replaceAll(":", "").replaceAll(".", ""));
             paiement.setActif(true);
 //
             entity.getPaiements().add(paiement);
 
             var entitySaved = repository.save(entity);
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Inscription")
+                    .action("Nouvelle inscription")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " s'est inscrit a la formation `" + entitySaved.getFormation().getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenu lors de la création");
@@ -63,6 +87,21 @@ public class InscriptionServiceImpl implements InscriptionService {
 
             mapper.updateEntityFromDto(dto, optional.get());
             var entitySaved = repository.save(optional.get());
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Inscription")
+                    .action("Mise a jour d'inscription")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " a mis a jour l'inscription de `" + optional.get().getApprenant().getNom() + " " +optional.get().getApprenant().getPrenom() + "` a la formation `" + optional.get().getFormation().getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenu lors de la mise a jour");
@@ -77,6 +116,21 @@ public class InscriptionServiceImpl implements InscriptionService {
                 throw new NotFoundException("Inscription introuvable");
 
             repository.deleteById(id);
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Inscription")
+                    .action("Suppression d'inscription")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " a supprime l'inscription de `" + optional.get().getApprenant().getNom() + " " +optional.get().getApprenant().getPrenom() + "` a la formation `" + optional.get().getFormation().getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenue");
         }

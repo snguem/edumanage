@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,8 @@ public class PaiementRestControllerImpl implements IPaiementRestController {
 
     private final PaiementService paiementService;
 
+
+    @PreAuthorize("hasAnyAuthority('APPRENANT', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> create(PaiementResponseDto dtoRequest) {
         try {
@@ -34,6 +37,8 @@ public class PaiementRestControllerImpl implements IPaiementRestController {
         
     }
 
+
+    @PreAuthorize("hasAnyAuthority('APPRENANT', 'GESTIONNAIRE', 'ADMINISTRATEUR')")
     @Override
     public Response<Object> update(Long id, PaiementResponseDto dto) {
         try {

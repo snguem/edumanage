@@ -1,9 +1,13 @@
 package ism.dakar.edumanage.datas.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import ism.dakar.edumanage.security.datas.entity.AbstractEntity;
+import ism.dakar.edumanage.security.datas.enums.StatutEnum;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -12,7 +16,24 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuditLogEntity extends AbstractEntity {
+@Builder
+public class AuditLogEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(nullable = false)
+    private Long id;
+
+    //    @Column(name = "active")
+    private boolean actif;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate createAt;
+
+    @Enumerated(EnumType.STRING)
+    private StatutEnum statut;
 
     private String userEmail;
 

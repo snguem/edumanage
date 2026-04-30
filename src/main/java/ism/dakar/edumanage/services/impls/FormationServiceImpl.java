@@ -1,12 +1,21 @@
 package ism.dakar.edumanage.services.impls;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import ism.dakar.edumanage.api.modeles.UserDto;
+import ism.dakar.edumanage.datas.entities.AuditLogEntity;
+import ism.dakar.edumanage.datas.entities.UserEntity;
+import ism.dakar.edumanage.datas.repositories.AuditLogRepository;
+import ism.dakar.edumanage.datas.repositories.UserRepo;
+import ism.dakar.edumanage.security.api.models.AppUserDto;
+import ism.dakar.edumanage.security.datas.enums.StatutEnum;
 import ism.dakar.edumanage.security.exceptions.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.querydsl.core.BooleanBuilder;
@@ -25,13 +34,31 @@ import lombok.RequiredArgsConstructor;
 public class FormationServiceImpl implements FormationService {
 
     private final FormationRepository repository;
+    private final UserRepo userRepo;
+    private final AuditLogRepository auditLogRepository;
     private final FormationMapper mapper;
 
     @Override
     public FormationDto create(FormationDto dto) {
         try {
             var entity = mapper.asEntity(dto);
+            entity.setId(null);
             var entitySaved = repository.save(entity);
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Formation")
+                    .action("Nouvelle formation")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " a cree la formation `" + dto.getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenu lors de la création");
@@ -47,6 +74,21 @@ public class FormationServiceImpl implements FormationService {
 
             mapper.updateEntityFromDto(dto, optional.get());
             var entitySaved = repository.save(optional.get());
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Formation")
+                    .action("Mise a jour de formation")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " a mis a jour la formation `" + dto.getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
             return mapper.asDto(entitySaved);
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenu lors de la mise a jour");
@@ -61,6 +103,21 @@ public class FormationServiceImpl implements FormationService {
                 throw new NotFoundException("Formation introuvable");
 
             repository.deleteById(id);
+
+            AppUserDto appUser = (AppUserDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            UserEntity user = userRepo.findByEmailEquals(appUser.getEmail());
+
+            auditLogRepository.save(AuditLogEntity.builder()
+                    .actif(true)
+                    .cible("Formation")
+                    .action("Suppression de formation")
+                    .details("L'utilisateur " + user.getNom() + " " + user.getPrenom() + " a supprime la formation `" + optional.get().getTitre()+"`")
+                    .userEmail(user.getEmail())
+                    .userName(user.getNom() + " " + user.getPrenom())
+                    .statut(StatutEnum.ACTIF)
+                    .loggedAt(LocalDateTime.now())
+                    .build());
         }catch (Exception ex){
             throw new BadRequestException("Une erreur est survenue");
         }
